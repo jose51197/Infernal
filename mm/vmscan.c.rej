@@ -1,0 +1,14 @@
+--- mm/vmscan.c
++++ mm/vmscan.c
+@@ -1511,6 +1523,11 @@
+ 	unsigned long nr_taken;
+ 	unsigned long nr_anon;
+ 	unsigned long nr_file;
++
++#ifdef CONFIG_ZRAM_FOR_ANDROID
++	struct timeval start, end;
++#endif /* CONFIG_ZRAM_FOR_ANDROID */
++
+ 	isolate_mode_t reclaim_mode = ISOLATE_INACTIVE;
+ 
+ 	while (unlikely(too_many_isolated(zone, file, sc))) {

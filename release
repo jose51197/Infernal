@@ -1,0 +1,15 @@
+cd ../infernalout
+rm boot.img
+rm -rf ./system/lib/modules/
+mkdir ./system/lib/modules
+cd ../infernal
+find . -name "*.ko" -exec cp {} ../infernalout/system/lib/modules \;
+cp arch/arm/boot/zImage ../infernalout/zImage
+cd ../kcontrol
+export ARCH=arm
+export CROSS_COMPILE=~/android/kernel/toolchains/arm-eabi-4.4.3/bin/arm-eabi-
+make
+cp kcontrol_gpu_msm.ko ../infernalout/system/lib/modules
+cd ../infernalout
+abootimg --create boot.img -f bootimg.cfg -k zImage -r newinitrd
+zip -r infernal-1.8GHZ-v1.4b.zip META-INF system boot.img
