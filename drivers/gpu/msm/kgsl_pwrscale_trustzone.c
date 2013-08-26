@@ -8,6 +8,9 @@
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
+ * 
+ * Modified by Paul Reioux (Faux123)
+ * 2013-06-20: Added KGSL Simple GPU Governor
  *
  */
 
@@ -22,8 +25,15 @@
 #include "kgsl_pwrscale.h"
 #include "kgsl_device.h"
 
+#ifdef CONFIG_MSM_KGSL_SIMPLE_GOV
+#include <linux/module.h>
+#endif
+
 #define TZ_GOVERNOR_PERFORMANCE 0
 #define TZ_GOVERNOR_ONDEMAND    1
+#ifdef CONFIG_MSM_KGSL_SIMPLE_GOV
+#define TZ_GOVERNOR_SIMPLE	2
+#endif
 
 struct tz_priv {
 	int governor;
@@ -65,6 +75,10 @@ static ssize_t tz_governor_show(struct kgsl_device *device,
 
 	if (priv->governor == TZ_GOVERNOR_ONDEMAND)
 		ret = snprintf(buf, 10, "ondemand\n");
+#ifdef CONFIG_MSM_KGSL_SIMPLE_GOV
+	else if (priv->governor == TZ_GOVERNOR_SIMPLE)
+		ret = snprintf(buf, 8, "simple\n");
+#endif
 	else
 		ret = snprintf(buf, 13, "performance\n");
 
@@ -88,6 +102,10 @@ static ssize_t tz_governor_store(struct kgsl_device *device,
 
 	if (!strncmp(str, "ondemand", 8))
 		priv->governor = TZ_GOVERNOR_ONDEMAND;
+#ifdef CONFIG_MSM_KGSL_SIMPLE_GOV
+	else if (!strncmp(str, "simple", 6))
+		priv->governor = TZ_GOVERNOR_SIMPLE;
+#endif
 	else if (!strncmp(str, "performance", 11))
 		priv->governor = TZ_GOVERNOR_PERFORMANCE;
 
@@ -113,8 +131,13 @@ static void tz_wake(struct kgsl_device *device, struct kgsl_pwrscale *pwrscale)
 {
 	struct tz_priv *priv = pwrscale->priv;
 	if (device->state != KGSL_STATE_NAP &&
-		priv->governor == TZ_GOVERNOR_ONDEMAND &&
+#ifdef CONFIG_MSM_KGSL_SIMPLE_GOV
+		(priv->governor == TZ_GOVERNOR_ONDEMAND ||
+		 priv->governor == TZ_GOVERNOR_SIMPLE))
+#else
+ 		priv->governor == TZ_GOVERNOR_ONDEMAND &&
 		device->pwrctrl.restore_slumber == 0)
+#endif
 		kgsl_pwrctrl_pwrlevel_change(device,
 					     device->pwrctrl.thermal_pwrlevel);
 }
@@ -173,6 +196,7 @@ static int simple_governor(struct kgsl_device *device, int idle_stat)
 }
 #endif
 
+
 static void tz_idle(struct kgsl_device *device, struct kgsl_pwrscale *pwrscale)
 {
 	struct kgsl_pwrctrl *pwr = &device->pwrctrl;
@@ -208,10 +232,20 @@ static void tz_idle(struct kgsl_device *device, struct kgsl_pwrscale *pwrscale)
 
 	idle = stats.total_time - stats.busy_time;
 	idle = (idle > 0) ? idle : 0;
+#ifdef CONFIG_MSM_KGSL_SIMPLE_GOV
+	if (priv->governor == TZ_GOVERNOR_SIMPLE)
+		val = simple_governor(device, idle);
+	else
+		val = __secure_tz_entry(TZ_UPDATE_ID, idle, device->id);
+#else
 	val = __secure_tz_entry(TZ_UPDATE_ID, idle, device->id);
-	if (val)
+#endif
+	if (val) {
 		kgsl_pwrctrl_pwrlevel_change(device,
 					     pwr->active_pwrlevel + val);
+		//pr_info("TZ idle stat: %d, TZ PL: %d, TZ out: %d\n",
+		//		idle, pwr->active_pwrlevel, val);
+	}
 }
 
 static void tz_busy(struct kgsl_device *device,
