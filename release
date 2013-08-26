@@ -12,4 +12,4 @@ make
 cp kcontrol_gpu_msm.ko ../infernalout/system/lib/modules
 cd ../infernalout
 abootimg --create boot.img -f bootimg.cfg -k zImage -r newinitrd
-zip -r infernal-1.8GHZ-v1.4b.zip META-INF system boot.img
+zip -r infernal-1.8GHZ-1.2max.zip META-INF system boot.img
