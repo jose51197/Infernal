@@ -1,3 +1,16 @@
+echo "1.Compile & zip 2.Commit"
+read compile
+
+
+if [ "$compile" == "1" ]; then
+export ARCH=arm
+export CROSS_COMPILE=~/android/kernel/toolchains/arm-eabi-4.4.3/bin/arm-eabi-
+make menuconfig
+make -j8
+echo "Choose speed and write here"
+read speed
+echo "Name version"
+read version
 cd ../infernalout
 rm boot.img
 rm -rf ./system/lib/modules/
@@ -6,10 +19,18 @@ cd ../infernal
 find . -name "*.ko" -exec cp {} ../infernalout/system/lib/modules \;
 cp arch/arm/boot/zImage ../infernalout/zImage
 cd ../kcontrol
-export ARCH=arm
-export CROSS_COMPILE=~/android/kernel/toolchains/arm-eabi-4.4.3/bin/arm-eabi-
-make
 cp kcontrol_gpu_msm.ko ../infernalout/system/lib/modules
 cd ../infernalout
 abootimg --create boot.img -f bootimg.cfg -k zImage -r newinitrd
-zip -r infernal-1.5GHZ-1.5.zip META-INF system boot.img
+zip -r infernal-"$speed"GHZ-"$version".zip META-INF system boot.img
+fi
+
+
+
+if [ "$compile" == "2" ]; then
+git add .
+echo "Please input commit message"
+read commit
+git commit -m "$commit"
+git push origin master
+fi
